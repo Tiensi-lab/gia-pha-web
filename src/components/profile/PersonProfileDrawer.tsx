@@ -21,6 +21,7 @@ import {
   Shield,
   Sparkles,
   Crown,
+  GitFork,
 } from "lucide-react";
 
 interface PersonProfileDrawerProps {
@@ -64,6 +65,7 @@ export const PersonProfileDrawer: React.FC<PersonProfileDrawerProps> = ({
   const spouses = graph.getSpouses(person.id);
   const children = graph.getChildren(person.id);
   const siblings = graph.getSiblings(person.id);
+  const cousins = graph.getCousins(person.id);
 
   const isMale = person.gender === "male";
   const isFemale = person.gender === "female";
@@ -322,24 +324,78 @@ export const PersonProfileDrawer: React.FC<PersonProfileDrawerProps> = ({
           </div>
 
           {/* Siblings */}
-          <div className="space-y-1">
+          <div className="space-y-1.5">
             <p className="text-slate-500 font-medium flex items-center gap-1">
-              <Users className="w-3 h-3 text-blue-500" /> Anh chị em ({siblings.length}):
+              <Users className="w-3.5 h-3.5 text-blue-500" /> Anh chị em ruột ({siblings.length}):
             </p>
             {siblings.length === 0 ? (
-              <p className="text-slate-400 italic">Chưa có thông tin anh chị em</p>
+              <p className="text-slate-400 italic">Chưa có thông tin anh chị em ruột</p>
             ) : (
               <div className="space-y-1">
                 {siblings.map(sib => (
                   <button
                     key={sib.person.id}
                     onClick={() => onSelectPerson(sib.person.id)}
-                    className="w-full text-left p-2 rounded-lg bg-slate-50 dark:bg-slate-800/60 hover:bg-amber-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-between"
+                    className="w-full text-left p-2 rounded-lg bg-slate-50 dark:bg-slate-800/60 hover:bg-amber-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-between transition-all"
                   >
-                    <span className="font-semibold text-slate-900 dark:text-slate-100">{sib.person.fullName}</span>
-                    <span className="text-[11px] text-slate-400">
-                      {sib.type === "full" ? "Ruột thịt" : sib.type === "half_paternal" ? "Cùng cha" : "Cùng mẹ"}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-semibold text-slate-900 dark:text-slate-100">{sib.person.fullName}</span>
+                      {sib.person.familyOrdinalName && (
+                        <span className="text-[10px] px-1 bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-200 rounded">
+                          Thứ {sib.person.familyOrdinalName}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300">
+                        {sib.roleDescription}
+                      </span>
+                      {sib.person.birthDate?.year && (
+                        <span className="text-[10px] text-slate-400">
+                          ({sib.person.birthDate.year})
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* First Cousins */}
+          <div className="space-y-1.5">
+            <p className="text-slate-500 font-medium flex items-center gap-1">
+              <GitFork className="w-3.5 h-3.5 text-indigo-500" /> Anh chị em họ ({cousins.length}):
+            </p>
+            {cousins.length === 0 ? (
+              <p className="text-slate-400 italic">Chưa ghi nhận anh chị em họ</p>
+            ) : (
+              <div className="space-y-1 max-h-48 overflow-y-auto pr-0.5">
+                {cousins.map(c => (
+                  <button
+                    key={c.person.id}
+                    onClick={() => onSelectPerson(c.person.id)}
+                    className="w-full text-left p-2 rounded-lg bg-indigo-50/40 dark:bg-indigo-950/20 hover:bg-indigo-50/80 dark:hover:bg-indigo-950/40 border border-indigo-200/60 dark:border-indigo-900/40 flex items-center justify-between transition-all"
+                  >
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-semibold text-slate-900 dark:text-slate-100">{c.person.fullName}</span>
+                        <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-medium">
+                          ({c.lineage === "paternal" ? "Bên nội" : "Bên ngoại"})
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-slate-400">{c.seniorityReason}</p>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200">
+                        {c.roleTitle}
+                      </span>
+                      {c.person.birthDate?.year && (
+                        <span className="text-[10px] text-slate-400">
+                          ({c.person.birthDate.year})
+                        </span>
+                      )}
+                    </div>
                   </button>
                 ))}
               </div>

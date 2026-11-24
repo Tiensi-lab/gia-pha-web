@@ -5,6 +5,53 @@ export interface SiblingInfo {
   person: Person;
   type: "full" | "half_paternal" | "half_maternal" | "provisional";
   sharedParentIds: string[];
+  role: "elder_brother" | "elder_sister" | "younger_brother" | "younger_sister" | "sibling";
+  roleDescription: string;
+  seniority: "senior" | "junior" | "equal" | "unknown";
+}
+
+export interface CousinInfo {
+  person: Person;
+  lineage: "paternal" | "maternal";
+  parentOfMe: Person;
+  parentOfCousin: Person;
+  parentRelation: string;
+  role: "elder_male_cousin" | "elder_female_cousin" | "younger_male_cousin" | "younger_female_cousin" | "cousin";
+  roleTitle: string;
+  seniorityReason: string;
+}
+
+/**
+ * Compare chronological or birth-order seniority between two persons.
+ * "senior": a is older/higher-order than b.
+ * "junior": a is younger/lower-order than b.
+ */
+export function comparePersonSeniority(
+  a: Person,
+  b: Person
+): "senior" | "junior" | "equal" | "unknown" {
+  // 1. By sibling order (1=Hai, 2=Ba...)
+  if (a.siblingOrder !== undefined && b.siblingOrder !== undefined) {
+    if (a.siblingOrder < b.siblingOrder) return "senior";
+    if (a.siblingOrder > b.siblingOrder) return "junior";
+  }
+
+  // 2. By birth date
+  if (a.birthDate?.year && b.birthDate?.year) {
+    if (a.birthDate.year < b.birthDate.year) return "senior";
+    if (a.birthDate.year > b.birthDate.year) return "junior";
+    if (a.birthDate.month && b.birthDate.month) {
+      if (a.birthDate.month < b.birthDate.month) return "senior";
+      if (a.birthDate.month > b.birthDate.month) return "junior";
+      if (a.birthDate.day && b.birthDate.day) {
+        if (a.birthDate.day < b.birthDate.day) return "senior";
+        if (a.birthDate.day > b.birthDate.day) return "junior";
+      }
+    }
+    return "equal";
+  }
+
+  return "unknown";
 }
 
 export class FamilyGraph {
@@ -152,8 +199,60 @@ export class FamilyGraph {
   }
 
   public getSiblings(personId: string): SiblingInfo[] {
+    const me = this.getPerson(personId);
     const myParentIds = this.getParentIds(personId);
     const siblingsMap = new Map<string, SiblingInfo>();
+
+    const calculateSiblingRole = (
+      sibling: Person,
+      type: SiblingInfo["type"]
+    ): {
+      role: SiblingInfo["role"];
+      roleDescription: string;
+      seniority: SiblingInfo["seniority"];
+    } => {
+      if (!me) {
+        return { role: "sibling", roleDescription: "Anh/Chị/Em", seniority: "unknown" };
+      }
+
+      // Seniority: is sibling older ("senior") or younger ("junior") than me?
+      const seniority = comparePersonSeniority(sibling, me);
+      const isMale = sibling.gender === "male";
+      const isFemale = sibling.gender === "female";
+
+      const suffix =
+        type === "full"
+          ? "ruột"
+          : type === "half_paternal"
+          ? "cùng cha"
+          : type === "half_maternal"
+          ? "cùng mẹ"
+          : "(lâm thời)";
+
+      if (seniority === "senior") {
+        if (isMale) {
+          return { role: "elder_brother", roleDescription: `Anh ${suffix}`, seniority };
+        } else if (isFemale) {
+          return { role: "elder_sister", roleDescription: `Chị ${suffix}`, seniority };
+        } else {
+          return { role: "sibling", roleDescription: `Anh/Chị ${suffix}`, seniority };
+        }
+      } else if (seniority === "junior") {
+        if (isMale) {
+          return { role: "younger_brother", roleDescription: `Em trai ${suffix}`, seniority };
+        } else if (isFemale) {
+          return { role: "younger_sister", roleDescription: `Em gái ${suffix}`, seniority };
+        } else {
+          return { role: "sibling", roleDescription: `Em ${suffix}`, seniority };
+        }
+      }
+
+      return {
+        role: "sibling",
+        roleDescription: isMale ? `Anh/Em trai ${suffix}` : isFemale ? `Chị/Em gái ${suffix}` : `Anh/Chị/Em ${suffix}`,
+        seniority: "unknown",
+      };
+    };
 
     for (const parentId of myParentIds) {
       const coChildren = this.getChildIds(parentId);
@@ -182,10 +281,13 @@ export class FamilyGraph {
           }
         }
 
+        const roleInfo = calculateSiblingRole(sibling, type);
+
         siblingsMap.set(siblingId, {
           person: sibling,
           type,
           sharedParentIds: shared,
+          ...roleInfo,
         });
       }
     }
@@ -196,16 +298,138 @@ export class FamilyGraph {
       if (!siblingsMap.has(provId)) {
         const sibling = this.getPerson(provId);
         if (sibling) {
+          const roleInfo = calculateSiblingRole(sibling, "provisional");
           siblingsMap.set(provId, {
             person: sibling,
             type: "provisional",
             sharedParentIds: [],
+            ...roleInfo,
           });
         }
       }
     }
 
-    return Array.from(siblingsMap.values());
+    // Sort siblings by birth order / birth date (elders first)
+    return Array.from(siblingsMap.values()).sort((a, b) => {
+      const cmp = comparePersonSeniority(a.person, b.person);
+      if (cmp === "senior") return -1;
+      if (cmp === "junior") return 1;
+      return (a.person.birthDate?.year ?? 9999) - (b.person.birthDate?.year ?? 9999);
+    });
+  }
+
+  /**
+   * Automatically infer all First Cousins (Anh chị em họ) based on parent-sibling connections.
+   * Accurately determines whether each cousin is Anh họ / Chị họ / Em họ following Southern customs.
+   */
+  public getCousins(personId: string): CousinInfo[] {
+    const me = this.getPerson(personId);
+    if (!me) return [];
+
+    const myParents = this.getParents(personId);
+    const cousinsMap = new Map<string, CousinInfo>();
+
+    for (const parent of myParents) {
+      const isFather = parent.gender === "male";
+      const lineage: CousinInfo["lineage"] = isFather ? "paternal" : "maternal";
+      const parentSiblings = this.getSiblings(parent.id);
+
+      for (const pSib of parentSiblings) {
+        const uncleAunt = pSib.person;
+        // Determine whether this uncle/aunt is senior (elder) or junior (younger) compared to my parent
+        const parentSeniority = comparePersonSeniority(uncleAunt, parent);
+
+        let parentRelation = "";
+        const ordinal = uncleAunt.familyOrdinalName ? ` ${uncleAunt.familyOrdinalName}` : "";
+        if (isFather) {
+          if (uncleAunt.gender === "male") {
+            parentRelation = parentSeniority === "senior" ? `Bác${ordinal}` : `Chú${ordinal}`;
+          } else {
+            parentRelation = `Cô${ordinal}`;
+          }
+        } else {
+          if (uncleAunt.gender === "male") {
+            parentRelation = `Cậu${ordinal}`;
+          } else {
+            parentRelation = `Dì${ordinal}`;
+          }
+        }
+
+        const cousinPersons = this.getChildren(uncleAunt.id);
+        for (const cousin of cousinPersons) {
+          if (cousin.id === personId) continue;
+          if (cousinsMap.has(cousin.id)) continue;
+
+          // Priority 1: Branch seniority of parents ("Bé bằng củ khoai, cứ vai mà gọi")
+          let isElder = false;
+          let isJunior = false;
+          let seniorityReason = "";
+
+          if (parentSeniority === "senior") {
+            isElder = true;
+            seniorityReason = `Con của ${parentRelation} (Cành trên)`;
+          } else if (parentSeniority === "junior") {
+            isJunior = true;
+            seniorityReason = `Con của ${parentRelation} (Cành dưới)`;
+          } else {
+            // Priority 2: Fall back to direct age comparison between cousins
+            const directSeniority = comparePersonSeniority(cousin, me);
+            if (directSeniority === "senior") {
+              isElder = true;
+              seniorityReason = "Lớn tuổi hơn";
+            } else if (directSeniority === "junior") {
+              isJunior = true;
+              seniorityReason = "Nhỏ tuổi hơn";
+            } else {
+              seniorityReason = `Con của ${parentRelation}`;
+            }
+          }
+
+          let role: CousinInfo["role"] = "cousin";
+          let roleTitle = "Anh/Chị/Em họ";
+          if (isElder) {
+            if (cousin.gender === "male") {
+              role = "elder_male_cousin";
+              roleTitle = "Anh họ";
+            } else if (cousin.gender === "female") {
+              role = "elder_female_cousin";
+              roleTitle = "Chị họ";
+            } else {
+              roleTitle = "Anh/Chị họ";
+            }
+          } else if (isJunior) {
+            if (cousin.gender === "male") {
+              role = "younger_male_cousin";
+              roleTitle = "Em họ (trai)";
+            } else if (cousin.gender === "female") {
+              role = "younger_female_cousin";
+              roleTitle = "Em họ (gái)";
+            } else {
+              roleTitle = "Em họ";
+            }
+          }
+
+          cousinsMap.set(cousin.id, {
+            person: cousin,
+            lineage,
+            parentOfMe: parent,
+            parentOfCousin: uncleAunt,
+            parentRelation,
+            role,
+            roleTitle,
+            seniorityReason,
+          });
+        }
+      }
+    }
+
+    // Sort cousins: Paternal first, elders first, then birth year
+    return Array.from(cousinsMap.values()).sort((a, b) => {
+      if (a.lineage !== b.lineage) return a.lineage === "paternal" ? -1 : 1;
+      if (a.role.startsWith("elder") && b.role.startsWith("younger")) return -1;
+      if (a.role.startsWith("younger") && b.role.startsWith("elder")) return 1;
+      return (a.person.birthDate?.year ?? 9999) - (b.person.birthDate?.year ?? 9999);
+    });
   }
 
   public getAncestors(personId: string, maxDepth: number = 100): Set<string> {

@@ -428,4 +428,108 @@ describe("Kinship and Graph Engine Tests", () => {
     expect(res.aCallsB).toBe("Em");
     expect(res.bCallsA).toBe("Anh");
   });
+
+  it("20. Automatic full-sibling role deduction based on parents and birth date / siblingOrder", () => {
+    const parent1 = createPerson("par1", "Cha", "male");
+    const parent2 = createPerson("par2", "Mẹ", "female");
+    const elderBrother = createPerson("s1", "Nguyễn Văn Anh", "male", {
+      siblingOrder: 1,
+      birthDate: { year: 1990 },
+    });
+    const elderSister = createPerson("s2", "Nguyễn Thị Chị", "female", {
+      siblingOrder: 2,
+      birthDate: { year: 1993 },
+    });
+    const me = createPerson("me", "Nguyễn Văn Tôi", "male", {
+      siblingOrder: 3,
+      birthDate: { year: 1996 },
+    });
+    const youngerSister = createPerson("s3", "Nguyễn Thị Em", "female", {
+      siblingOrder: 4,
+      birthDate: { year: 2000 },
+    });
+
+    const rels = [
+      createRel("r1", "PARENT_CHILD", "par1", "s1"),
+      createRel("r2", "PARENT_CHILD", "par2", "s1"),
+      createRel("r3", "PARENT_CHILD", "par1", "s2"),
+      createRel("r4", "PARENT_CHILD", "par2", "s2"),
+      createRel("r5", "PARENT_CHILD", "par1", "me"),
+      createRel("r6", "PARENT_CHILD", "par2", "me"),
+      createRel("r7", "PARENT_CHILD", "par1", "s3"),
+      createRel("r8", "PARENT_CHILD", "par2", "s3"),
+    ];
+
+    const graph = new FamilyGraph([parent1, parent2, elderBrother, elderSister, me, youngerSister], rels);
+    const siblings = graph.getSiblings("me");
+
+    expect(siblings.length).toBe(3);
+
+    const s1Info = siblings.find(s => s.person.id === "s1")!;
+    expect(s1Info.role).toBe("elder_brother");
+    expect(s1Info.roleDescription).toBe("Anh ruột");
+
+    const s2Info = siblings.find(s => s.person.id === "s2")!;
+    expect(s2Info.role).toBe("elder_sister");
+    expect(s2Info.roleDescription).toBe("Chị ruột");
+
+    const s3Info = siblings.find(s => s.person.id === "s3")!;
+    expect(s3Info.role).toBe("younger_sister");
+    expect(s3Info.roleDescription).toBe("Em gái ruột");
+  });
+
+  it("21. Automatic cousin deduction based on parent-sibling relations and branch seniority", () => {
+    const grandfather = createPerson("gf", "Ông Nội", "male");
+    const elderUncle = createPerson("u1", "Nguyễn Văn Hai (Bác Hai)", "male", {
+      siblingOrder: 1,
+      familyOrdinalName: "Hai",
+      birthDate: { year: 1968 },
+    });
+    const myFather = createPerson("f", "Nguyễn Văn Trải (Cậu Tám)", "male", {
+      siblingOrder: 7,
+      familyOrdinalName: "Tám",
+      birthDate: { year: 1972 },
+    });
+    const youngerUncle = createPerson("u2", "Nguyễn Văn Út (Chú Út)", "male", {
+      siblingOrder: 9,
+      familyOrdinalName: "Út",
+      birthDate: { year: 1978 },
+    });
+
+    const elderCousin = createPerson("c_senior", "Nguyễn Văn Đạt", "male", {
+      birthDate: { year: 2010 }, // younger in age, but born to elder uncle
+    });
+    const me = createPerson("me", "Nguyễn Tiến Sĩ", "male", {
+      birthDate: { year: 2008 },
+    });
+    const juniorCousin = createPerson("c_junior", "Nguyễn Thị Bé", "female", {
+      birthDate: { year: 2005 }, // older in age, but born to younger uncle
+    });
+
+    const rels = [
+      createRel("r1", "PARENT_CHILD", "gf", "u1"),
+      createRel("r2", "PARENT_CHILD", "gf", "f"),
+      createRel("r3", "PARENT_CHILD", "gf", "u2"),
+      createRel("r4", "PARENT_CHILD", "u1", "c_senior"),
+      createRel("r5", "PARENT_CHILD", "f", "me"),
+      createRel("r6", "PARENT_CHILD", "u2", "c_junior"),
+    ];
+
+    const graph = new FamilyGraph([grandfather, elderUncle, myFather, youngerUncle, elderCousin, me, juniorCousin], rels);
+    const cousins = graph.getCousins("me");
+
+    expect(cousins.length).toBe(2);
+
+    // elderCousin is child of Bác Hai (cành trên) -> Anh họ
+    const c1 = cousins.find(c => c.person.id === "c_senior")!;
+    expect(c1.lineage).toBe("paternal");
+    expect(c1.roleTitle).toBe("Anh họ");
+    expect(c1.seniorityReason).toContain("Cành trên");
+
+    // juniorCousin is child of Chú Út (cành dưới) -> Em họ
+    const c2 = cousins.find(c => c.person.id === "c_junior")!;
+    expect(c2.lineage).toBe("paternal");
+    expect(c2.roleTitle).toBe("Em họ (gái)");
+    expect(c2.seniorityReason).toContain("Cành dưới");
+  });
 });
