@@ -65,14 +65,23 @@ export const RelationshipFormModal: React.FC<RelationshipFormModalProps> = ({
         type,
         fromPersonId,
         toPersonId,
-        parentChildData: type === "PARENT_CHILD" ? { nature, confidence: "certain" } : undefined,
-        partnershipData: type === "PARTNERSHIP" ? { isCurrent: true, marriageType: "traditional" } : undefined,
-        provisionalSiblingData: type === "PROVISIONAL_SIBLING"
-          ? { reason: provisionalReason.trim() || "Chưa có thông tin cha mẹ chung", confidence: "probable" }
-          : undefined,
-        notes: notes.trim() || undefined,
         createdBy: "admin",
       };
+
+      if (type === "PARENT_CHILD") {
+        input.parentChildData = { nature, confidence: "certain" };
+      } else if (type === "PARTNERSHIP") {
+        input.partnershipData = { isCurrent: true, marriageType: "traditional" };
+      } else if (type === "PROVISIONAL_SIBLING") {
+        input.provisionalSiblingData = {
+          reason: provisionalReason.trim() || "Chưa có thông tin cha mẹ chung",
+          confidence: "probable",
+        };
+      }
+
+      if (notes.trim()) {
+        input.notes = notes.trim();
+      }
 
       await onSave(input);
       onClose();

@@ -62,15 +62,17 @@ export const KinshipOverrideModal: React.FC<KinshipOverrideModalProps> = ({
     try {
       setIsSubmitting(true);
       setError(null);
-      await onSaveOverride({
+      const input: any = {
         id: existingOverride?.id || `ov-${Date.now()}`,
         speakerId,
         targetId,
         addressTerm: addressTerm.trim(),
-        selfReferenceTerm: selfReferenceTerm.trim() || undefined,
-        notes: notes.trim() || undefined,
         createdBy: "admin",
-      });
+      };
+      if (selfReferenceTerm.trim()) input.selfReferenceTerm = selfReferenceTerm.trim();
+      if (notes.trim()) input.notes = notes.trim();
+
+      await onSaveOverride(input);
       onClose();
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Đã xảy ra lỗi khi lưu ghi đè";

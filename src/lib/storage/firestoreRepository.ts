@@ -26,6 +26,20 @@ import { NamingPreferences, KinshipOverride, KinshipOverrideInput, defaultSouthe
 import { AuditLog } from "../../domain/models/audit";
 import { FamilyGraph } from "../../domain/graph/familyGraph";
 import { GraphCycleDetector } from "../../domain/graph/graphCycleDetector";
+import {
+  initialPersons,
+  initialRelationships,
+  initialBranches,
+  initialOverrides,
+} from "./sampleData";
+
+/**
+ * Removes any undefined fields recursively so Firestore setDoc / updateDoc won't throw
+ * "Function setDoc() called with invalid data. Unsupported field value: undefined"
+ */
+function cleanForFirestore<T>(data: T): Record<string, unknown> {
+  return JSON.parse(JSON.stringify(data));
+}
 
 export class FirestoreRepository implements FamilyRepository {
   private spaceId: string;
@@ -75,7 +89,7 @@ export class FirestoreRepository implements FamilyRepository {
     };
 
     const ref = doc(this.firestore, this.getCollectionPath("persons"), id);
-    await setDoc(ref, newPerson);
+    await setDoc(ref, cleanForFirestore(newPerson));
 
     await this.recordAuditLog({
       action: "CREATE_PERSON",
@@ -101,7 +115,7 @@ export class FirestoreRepository implements FamilyRepository {
     };
 
     const ref = doc(this.firestore, this.getCollectionPath("persons"), id);
-    await updateDoc(ref, updated as unknown as Record<string, unknown>);
+    await updateDoc(ref, cleanForFirestore(updated));
 
     await this.recordAuditLog({
       action: "UPDATE_PERSON",
@@ -189,7 +203,7 @@ export class FirestoreRepository implements FamilyRepository {
     };
 
     const ref = doc(this.firestore, this.getCollectionPath("relationships"), id);
-    await setDoc(ref, newRel);
+    await setDoc(ref, cleanForFirestore(newRel));
 
     await this.recordAuditLog({
       action: "CREATE_RELATIONSHIP",
@@ -227,7 +241,7 @@ export class FirestoreRepository implements FamilyRepository {
     const now = new Date().toISOString();
     const branch: Branch = { ...input, id, createdAt: input.createdAt || now, updatedAt: now };
     const ref = doc(this.firestore, this.getCollectionPath("branches"), id);
-    await setDoc(ref, branch);
+    await setDoc(ref, cleanForFirestore(branch));
     return branch;
   }
 
@@ -236,7 +250,7 @@ export class FirestoreRepository implements FamilyRepository {
     if (!existing) throw new Error("Không tìm thấy nhánh");
     const updated: Branch = { ...existing, ...updates, id, updatedAt: new Date().toISOString() };
     const ref = doc(this.firestore, this.getCollectionPath("branches"), id);
-    await updateDoc(ref, updated as unknown as Record<string, unknown>);
+    await updateDoc(ref, cleanForFirestore(updated));
     return updated;
   }
 
@@ -257,7 +271,7 @@ export class FirestoreRepository implements FamilyRepository {
     const current = await this.getNamingPreferences();
     const updated = { ...current, ...updates };
     const ref = doc(this.firestore, this.getCollectionPath("settings"), "namingPreferences");
-    await setDoc(ref, updated);
+    await setDoc(ref, cleanForFirestore(updated));
     return updated;
   }
 
@@ -278,7 +292,7 @@ export class FirestoreRepository implements FamilyRepository {
       createdBy: input.createdBy || "admin",
     };
     const ref = doc(this.firestore, this.getCollectionPath("kinshipOverrides"), id);
-    await setDoc(ref, override);
+    await setDoc(ref, cleanForFirestore(override));
     return override;
   }
 
@@ -287,7 +301,7 @@ export class FirestoreRepository implements FamilyRepository {
     const snap = await getDoc(ref);
     if (!snap.exists()) throw new Error("Ghi đè không tồn tại");
     const updated = { ...snap.data(), ...updates, id, updatedAt: new Date().toISOString() };
-    await updateDoc(ref, updated as unknown as Record<string, unknown>);
+    await updateDoc(ref, cleanForFirestore(updated));
     return updated as KinshipOverride;
   }
 
@@ -361,7 +375,10 @@ export class FirestoreRepository implements FamilyRepository {
       notes: [surviving.notes, merged.notes, `[Đã sáp nhập từ ${mergedId}]`].filter(Boolean).join("\n"),
       updatedAt: new Date().toISOString(),
     };
-    batch.set(doc(this.firestore, this.getCollectionPath("persons"), survivingId), updatedSurviving);
+    batch.set(
+      doc(this.firestore, this.getCollectionPath("persons"), survivingId),
+      cleanForFirestore(updatedSurviving)
+    );
 
     // Delete merged person
     batch.delete(doc(this.firestore, this.getCollectionPath("persons"), mergedId));
@@ -417,7 +434,7 @@ export class FirestoreRepository implements FamilyRepository {
     const id = `audit-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
     const entry: AuditLog = { ...log, id, timestamp: new Date().toISOString() };
     const ref = doc(this.firestore, this.getCollectionPath("auditLogs"), id);
-    await setDoc(ref, entry);
+    await setDoc(ref, cleanForFirestore(entry));
     return entry;
   }
 
@@ -452,22 +469,22 @@ export class FirestoreRepository implements FamilyRepository {
     let count = 0;
 
     for (const p of backup.persons || []) {
-      batch.set(doc(this.firestore, this.getCollectionPath("persons"), p.id), p);
+      batch.set(doc(this.firestore, this.getCollectionPath("persons"), p.id), cleanForFirestore(p));
       count++;
     }
     for (const r of backup.relationships || []) {
-      batch.set(doc(this.firestore, this.getCollectionPath("relationships"), r.id), r);
+      batch.set(doc(this.firestore, this.getCollectionPath("relationships"), r.id), cleanForFirestore(r));
     }
     for (const b of backup.branches || []) {
-      batch.set(doc(this.firestore, this.getCollectionPath("branches"), b.id), b);
+      batch.set(doc(this.firestore, this.getCollectionPath("branches"), b.id), cleanForFirestore(b));
     }
     for (const o of backup.kinshipOverrides || []) {
-      batch.set(doc(this.firestore, this.getCollectionPath("kinshipOverrides"), o.id), o);
+      batch.set(doc(this.firestore, this.getCollectionPath("kinshipOverrides"), o.id), cleanForFirestore(o));
     }
     if (backup.namingPreferences) {
       batch.set(
         doc(this.firestore, this.getCollectionPath("settings"), "namingPreferences"),
-        backup.namingPreferences
+        cleanForFirestore(backup.namingPreferences)
       );
     }
 
@@ -476,10 +493,23 @@ export class FirestoreRepository implements FamilyRepository {
   }
 
   async resetToSampleData(): Promise<void> {
-    // Import sample data directly
     const batch = writeBatch(this.firestore);
-    // write initial persons, rels, branches
-    // will be performed in batches
+    for (const b of initialBranches) {
+      batch.set(doc(this.firestore, this.getCollectionPath("branches"), b.id), cleanForFirestore(b));
+    }
+    for (const p of initialPersons) {
+      batch.set(doc(this.firestore, this.getCollectionPath("persons"), p.id), cleanForFirestore(p));
+    }
+    for (const r of initialRelationships) {
+      batch.set(doc(this.firestore, this.getCollectionPath("relationships"), r.id), cleanForFirestore(r));
+    }
+    for (const o of initialOverrides) {
+      batch.set(doc(this.firestore, this.getCollectionPath("kinshipOverrides"), o.id), cleanForFirestore(o));
+    }
+    batch.set(
+      doc(this.firestore, this.getCollectionPath("settings"), "namingPreferences"),
+      cleanForFirestore(defaultSouthernNamingPreferences)
+    );
     await batch.commit();
   }
 }

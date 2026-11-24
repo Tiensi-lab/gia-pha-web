@@ -120,28 +120,8 @@ export const PersonFormModal: React.FC<PersonFormModalProps> = ({
       const input: PersonInput = {
         id: person?.id || `person-${Date.now()}`,
         fullName: fullName.trim(),
-        preferredName: preferredName.trim() || undefined,
         gender,
         livingStatus,
-        birthDate: bYearNum
-          ? {
-              year: bYearNum,
-              month: bMonthNum,
-              day: bDayNum,
-              isApproximate: isBirthApprox,
-            }
-          : undefined,
-        deathDate: dYearNum
-          ? {
-              year: dYearNum,
-              month: dMonthNum,
-              day: dDayNum,
-            }
-          : undefined,
-        siblingOrder: sOrderNum,
-        familyOrdinalName: familyOrdinalName.trim() || undefined,
-        hometown: hometown.trim() || undefined,
-        biography: biography.trim() || undefined,
         branchIds: selectedBranches.length > 0 ? selectedBranches : ["branch-root"],
         visibility: person?.visibility || {
           isPublic: true,
@@ -151,6 +131,27 @@ export const PersonFormModal: React.FC<PersonFormModalProps> = ({
         },
         createdBy: person?.createdBy || "admin",
       };
+
+      if (preferredName.trim()) input.preferredName = preferredName.trim();
+      if (bYearNum) {
+        input.birthDate = {
+          year: bYearNum,
+          month: bMonthNum,
+          day: bDayNum,
+          isApproximate: isBirthApprox,
+        };
+      }
+      if (livingStatus === "deceased" && dYearNum) {
+        input.deathDate = {
+          year: dYearNum,
+          month: dMonthNum,
+          day: dDayNum,
+        };
+      }
+      if (sOrderNum) input.siblingOrder = sOrderNum;
+      if (familyOrdinalName.trim()) input.familyOrdinalName = familyOrdinalName.trim();
+      if (hometown.trim()) input.hometown = hometown.trim();
+      if (biography.trim()) input.biography = biography.trim();
 
       await onSave(input);
       onClose();
