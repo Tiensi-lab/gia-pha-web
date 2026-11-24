@@ -157,19 +157,22 @@ export const PersonProfileDrawer: React.FC<PersonProfileDrawerProps> = ({
             )}
           </div>
 
-          {onSetAsRoot && (
-            <button
-              onClick={() => onSetAsRoot(person.id)}
-              disabled={isRootPerson}
-              className={`w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg font-semibold transition-all text-xs border ${
-                isRootPerson
-                  ? "bg-amber-100 border-amber-300 text-amber-900 dark:bg-amber-950/60 dark:border-amber-700 dark:text-amber-200 cursor-default shadow-xs"
-                  : "bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/30 dark:hover:bg-amber-900/50 border-amber-200 dark:border-amber-800 text-amber-850 dark:text-amber-300"
-              }`}
-            >
+          {/* Root Person Indicator or Admin Set Root Button */}
+          {isRootPerson ? (
+            <div className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg font-semibold text-xs border bg-amber-100 border-amber-300 text-amber-900 dark:bg-amber-950/60 dark:border-amber-700 dark:text-amber-200 shadow-xs">
               <Crown className="w-3.5 h-3.5 text-amber-600" />
-              <span>{isRootPerson ? "👑 Đây là Gốc phả hệ (Đời 1)" : "Đặt người này làm Gốc cây (Đời 1)"}</span>
-            </button>
+              <span>👑 Đây là Gốc phả hệ (Đời 1)</span>
+            </div>
+          ) : (
+            isAdmin && onSetAsRoot && (
+              <button
+                onClick={() => onSetAsRoot(person.id)}
+                className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg font-semibold transition-all text-xs border bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/30 dark:hover:bg-amber-900/50 border-amber-200 dark:border-amber-800 text-amber-850 dark:text-amber-300"
+              >
+                <Crown className="w-3.5 h-3.5 text-amber-600" />
+                <span>Đặt người này làm Gốc cây (Đời 1)</span>
+              </button>
+            )
           )}
         </div>
 

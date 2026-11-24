@@ -31,6 +31,7 @@ interface GraphControlsProps {
   onSelectReferencePerson: (personId: string) => void;
   rootPersonId?: string | null;
   onSelectRootPerson?: (personId: string) => void;
+  isAdmin?: boolean;
   onZoomIn: () => void;
   onZoomOut: () => void;
   onFitView: () => void;
@@ -51,6 +52,7 @@ export const GraphControls: React.FC<GraphControlsProps> = ({
   onSelectReferencePerson,
   rootPersonId,
   onSelectRootPerson,
+  isAdmin = false,
   onZoomIn,
   onZoomOut,
   onFitView,
@@ -179,22 +181,29 @@ export const GraphControls: React.FC<GraphControlsProps> = ({
 
       {/* Right side: Root person & Reference person & Kinship compare button & Canvas zoom */}
       <div className="flex items-center gap-2">
-        {/* Root person selector ("Gốc phả hệ / Thủy tổ") */}
-        {onSelectRootPerson && (
+        {/* Root person indicator / selector ("Gốc phả hệ / Thủy tổ") */}
+        {rootPersonId && (
           <div className="flex items-center gap-1.5 bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 px-3 py-1.5 rounded-lg border border-amber-300 dark:border-amber-700 text-xs font-medium">
-            <Crown className="w-3.5 h-3.5 text-amber-600" />
+            <Crown className="w-3.5 h-3.5 text-amber-600 shrink-0" />
             <span>Gốc cây:</span>
-            <select
-              value={rootPersonId || ""}
-              onChange={e => onSelectRootPerson(e.target.value)}
-              className="bg-transparent border-none text-xs font-semibold focus:outline-none cursor-pointer max-w-[130px] truncate"
-            >
-              {persons.map(p => (
-                <option key={p.id} value={p.id}>
-                  {p.fullName}
-                </option>
-              ))}
-            </select>
+            {isAdmin && onSelectRootPerson ? (
+              <select
+                value={rootPersonId || ""}
+                onChange={e => onSelectRootPerson(e.target.value)}
+                className="bg-transparent border-none text-xs font-semibold focus:outline-none cursor-pointer max-w-[130px] truncate"
+                title="Thay đổi gốc cây phả hệ (Chỉ Quản trị viên)"
+              >
+                {persons.map(p => (
+                  <option key={p.id} value={p.id}>
+                    {p.fullName}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <span className="font-semibold max-w-[130px] truncate" title="Gốc cây phả hệ hiện tại (Chỉ đọc)">
+                {persons.find(p => p.id === rootPersonId)?.fullName || "Chưa đặt"}
+              </span>
+            )}
           </div>
         )}
 

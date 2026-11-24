@@ -130,27 +130,26 @@ function FamilyAppContent() {
         setReferencePersonId(adminPerson.id);
       }
 
-      // Detect / Load rootPersonId
+      // Detect / Load rootPersonId (Ưu tiên: 1. Database -> 2. LocalStorage -> 3. Auto detect)
       let detectedRoot = rootPersonId;
-      if (!detectedRoot || !pList.some(p => p.id === detectedRoot)) {
+      const targetBranchId = selectedBranchId === "all" ? (bList[0]?.id || "branch-root") : selectedBranchId;
+      const activeBranch = bList.find(b => b.id === targetBranchId) || bList[0];
+      if (activeBranch?.rootPersonId && pList.some(p => p.id === activeBranch.rootPersonId)) {
+        detectedRoot = activeBranch.rootPersonId;
+      } else if (!detectedRoot || !pList.some(p => p.id === detectedRoot)) {
         const storedRoot = typeof window !== "undefined" ? localStorage.getItem("gia_pha_root_person") : null;
         if (storedRoot && pList.some(p => p.id === storedRoot)) {
           detectedRoot = storedRoot;
-        } else {
-          const activeBranch = bList.find(b => b.id === (selectedBranchId === "all" ? "branch-root" : selectedBranchId));
-          if (activeBranch?.rootPersonId && pList.some(p => p.id === activeBranch.rootPersonId)) {
-            detectedRoot = activeBranch.rootPersonId;
-          } else if (pList.length > 0) {
-            // Find root person who has no parents and has descendants, or oldest birth year
-            const parentRels = new Set(rList.filter(r => r.type === "PARENT_CHILD").map(r => r.toPersonId));
-            const rootCandidates = pList.filter(p => !parentRels.has(p.id));
-            if (rootCandidates.length > 0) {
-              const childRels = new Set(rList.filter(r => r.type === "PARENT_CHILD").map(r => r.fromPersonId));
-              const withChildren = rootCandidates.find(p => childRels.has(p.id));
-              detectedRoot = withChildren ? withChildren.id : rootCandidates[0].id;
-            } else {
-              detectedRoot = pList[0].id;
-            }
+        } else if (pList.length > 0) {
+          // Find root person who has no parents and has descendants, or oldest birth year
+          const parentRels = new Set(rList.filter(r => r.type === "PARENT_CHILD").map(r => r.toPersonId));
+          const rootCandidates = pList.filter(p => !parentRels.has(p.id));
+          if (rootCandidates.length > 0) {
+            const childRels = new Set(rList.filter(r => r.type === "PARENT_CHILD").map(r => r.fromPersonId));
+            const withChildren = rootCandidates.find(p => childRels.has(p.id));
+            detectedRoot = withChildren ? withChildren.id : rootCandidates[0].id;
+          } else {
+            detectedRoot = pList[0].id;
           }
         }
       }
@@ -261,6 +260,10 @@ function FamilyAppContent() {
   };
 
   const handleSetAsRoot = useCallback(async (personId: string) => {
+    if (!isAdmin) {
+      console.warn("Chỉ quản trị viên mới có quyền đổi gốc cây.");
+      return;
+    }
     setRootPersonId(personId);
     if (typeof window !== "undefined") {
       localStorage.setItem("gia_pha_root_person", personId);
@@ -275,7 +278,7 @@ function FamilyAppContent() {
     } catch (e) {
       console.warn("Failed to persist root person", e);
     }
-  }, [branches, repository, selectedBranchId]);
+  }, [branches, repository, selectedBranchId, isAdmin]);
 
   const handleZoomIn = () => rfInstance?.zoomIn({ duration: 300 });
   const handleZoomOut = () => rfInstance?.zoomOut({ duration: 300 });
@@ -413,7 +416,8 @@ function FamilyAppContent() {
             referencePersonId={referencePersonId}
             onSelectReferencePerson={setReferencePersonId}
             rootPersonId={rootPersonId}
-            onSelectRootPerson={handleSetAsRoot}
+            onSelectRootPerson={isAdmin ? handleSetAsRoot : undefined}
+            isAdmin={isAdmin}
             onZoomIn={handleZoomIn}
             onZoomOut={handleZoomOut}
             onFitView={handleFitView}
@@ -471,7 +475,7 @@ function FamilyAppContent() {
             }}
             onSetAsReference={id => setReferencePersonId(id)}
             isReferencePerson={referencePersonId === selectedPersonId}
-            onSetAsRoot={handleSetAsRoot}
+            onSetAsRoot={isAdmin ? handleSetAsRoot : undefined}
             isRootPerson={rootPersonId === selectedPersonId}
           />
         </div>
