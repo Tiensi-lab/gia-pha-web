@@ -43,6 +43,7 @@ function FamilyAppContent() {
   const [viewMode, setViewMode] = useState<ViewMode>("full");
   const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
   const [referencePersonId, setReferencePersonId] = useState<string | null>("p-admin-minh");
+  const [rootPersonId, setRootPersonId] = useState<string | null>(null);
   const [kinshipPathNodeIds, setKinshipPathNodeIds] = useState<Set<string>>(new Set());
 
   // Modals & Drawers
@@ -94,12 +95,40 @@ function FamilyAppContent() {
         const adminPerson = pList.find(p => p.id === "p-admin-minh") || pList[0];
         setReferencePersonId(adminPerson.id);
       }
+
+      // Detect / Load rootPersonId
+      let detectedRoot = rootPersonId;
+      if (!detectedRoot) {
+        const storedRoot = typeof window !== "undefined" ? localStorage.getItem("gia_pha_root_person") : null;
+        if (storedRoot && pList.some(p => p.id === storedRoot)) {
+          detectedRoot = storedRoot;
+        } else {
+          const activeBranch = bList.find(b => b.id === (selectedBranchId === "all" ? "branch-root" : selectedBranchId));
+          if (activeBranch?.rootPersonId && pList.some(p => p.id === activeBranch.rootPersonId)) {
+            detectedRoot = activeBranch.rootPersonId;
+          } else if (pList.length > 0) {
+            // Find root person who has no parents and has descendants, or oldest birth year
+            const parentRels = new Set(rList.filter(r => r.type === "PARENT_CHILD").map(r => r.toPersonId));
+            const rootCandidates = pList.filter(p => !parentRels.has(p.id));
+            if (rootCandidates.length > 0) {
+              const childRels = new Set(rList.filter(r => r.type === "PARENT_CHILD").map(r => r.fromPersonId));
+              const withChildren = rootCandidates.find(p => childRels.has(p.id));
+              detectedRoot = withChildren ? withChildren.id : rootCandidates[0].id;
+            } else {
+              detectedRoot = pList[0].id;
+            }
+          }
+        }
+      }
+      if (detectedRoot) {
+        setRootPersonId(detectedRoot);
+      }
     } catch (e) {
       console.error("Failed to load family data", e);
     } finally {
       setIsLoading(false);
     }
-  }, [repository, referencePersonId]);
+  }, [repository, referencePersonId, rootPersonId, selectedBranchId]);
 
   useEffect(() => {
     loadData();
@@ -163,6 +192,23 @@ function FamilyAppContent() {
     await repository.deleteOverride(overrideId);
     await loadData();
   };
+
+  const handleSetAsRoot = useCallback(async (personId: string) => {
+    setRootPersonId(personId);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("gia_pha_root_person", personId);
+    }
+    try {
+      const targetBranchId = selectedBranchId === "all" ? (branches[0]?.id || "branch-root") : selectedBranchId;
+      const targetBranch = branches.find(b => b.id === targetBranchId);
+      if (targetBranch) {
+        await repository.updateBranch(targetBranchId, { rootPersonId: personId });
+        setBranches(prev => prev.map(b => b.id === targetBranchId ? { ...b, rootPersonId: personId } : b));
+      }
+    } catch (e) {
+      console.warn("Failed to persist root person", e);
+    }
+  }, [branches, repository, selectedBranchId]);
 
   const handleZoomIn = () => rfInstance?.zoomIn({ duration: 300 });
   const handleZoomOut = () => rfInstance?.zoomOut({ duration: 300 });
@@ -299,6 +345,8 @@ function FamilyAppContent() {
             onSelectPerson={handleSelectPerson}
             referencePersonId={referencePersonId}
             onSelectReferencePerson={setReferencePersonId}
+            rootPersonId={rootPersonId}
+            onSelectRootPerson={handleSetAsRoot}
             onZoomIn={handleZoomIn}
             onZoomOut={handleZoomOut}
             onFitView={handleFitView}
@@ -321,6 +369,7 @@ function FamilyAppContent() {
               selectedPersonId={selectedPersonId}
               onSelectPerson={handleSelectPerson}
               referencePersonId={referencePersonId}
+              rootPersonId={rootPersonId}
               kinshipPathNodeIds={kinshipPathNodeIds}
               onInitReactFlow={setRfInstance}
             />
@@ -347,6 +396,8 @@ function FamilyAppContent() {
             }}
             onSetAsReference={id => setReferencePersonId(id)}
             isReferencePerson={referencePersonId === selectedPersonId}
+            onSetAsRoot={handleSetAsRoot}
+            isRootPerson={rootPersonId === selectedPersonId}
           />
         </div>
       )}

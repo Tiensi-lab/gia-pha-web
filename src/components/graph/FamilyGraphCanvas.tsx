@@ -36,6 +36,7 @@ interface FamilyGraphCanvasProps {
   selectedPersonId: string | null;
   onSelectPerson: (personId: string) => void;
   referencePersonId: string | null;
+  rootPersonId?: string | null;
   selectedComparePersonId?: string | null;
   kinshipPathNodeIds?: Set<string>;
   onInitReactFlow?: (instance: ReturnType<typeof useReactFlow>) => void;
@@ -50,6 +51,7 @@ const FlowCanvasInner: React.FC<FamilyGraphCanvasProps> = ({
   selectedPersonId,
   onSelectPerson,
   referencePersonId,
+  rootPersonId,
   selectedComparePersonId,
   kinshipPathNodeIds,
   onInitReactFlow,
@@ -118,6 +120,7 @@ const FlowCanvasInner: React.FC<FamilyGraphCanvasProps> = ({
         visibleRelationships,
         {
           direction: "DOWN",
+          rootPersonId: rootPersonId || undefined,
           highlightedPersonId: selectedPersonId || undefined,
           activeReferencePersonId: referencePersonId || undefined,
           selectedComparePersonId: selectedComparePersonId || undefined,
@@ -144,6 +147,7 @@ const FlowCanvasInner: React.FC<FamilyGraphCanvasProps> = ({
     visibleRelationships,
     selectedPersonId,
     referencePersonId,
+    rootPersonId,
     selectedComparePersonId,
     kinshipPathNodeIds,
     allPersons,

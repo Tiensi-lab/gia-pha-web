@@ -4,12 +4,13 @@ import React, { memo } from "react";
 import { Handle, Position, NodeProps } from "@xyflow/react";
 import { Person } from "../../domain/models/person";
 import { formatLifespan } from "../../lib/utils/dateFormatter";
-import { User, Sparkles } from "lucide-react";
+import { User, Sparkles, Crown } from "lucide-react";
 
 export interface PersonNodeData {
   person: Person;
   isSelected?: boolean;
   isRef?: boolean;
+  isRoot?: boolean;
   isCompare?: boolean;
   isInKinshipPath?: boolean;
   isAncestor?: boolean;
@@ -18,7 +19,7 @@ export interface PersonNodeData {
 
 export const PersonNode = memo(({ data }: NodeProps) => {
   const nodeData = data as unknown as PersonNodeData;
-  const { person, isSelected, isRef, isCompare, isInKinshipPath, isAncestor, isDescendant } = nodeData;
+  const { person, isSelected, isRef, isRoot, isCompare, isInKinshipPath, isAncestor, isDescendant } = nodeData;
 
   const isMale = person.gender === "male";
   const isFemale = person.gender === "female";
@@ -27,6 +28,8 @@ export const PersonNode = memo(({ data }: NodeProps) => {
   let ringClass = "border-slate-300 dark:border-slate-700 hover:border-amber-400";
   if (isSelected) {
     ringClass = "border-amber-500 ring-4 ring-amber-400/40 shadow-lg scale-105";
+  } else if (isRoot) {
+    ringClass = "border-amber-500 ring-2 ring-amber-400/60 shadow-md bg-amber-50/10";
   } else if (isRef) {
     ringClass = "border-emerald-500 ring-4 ring-emerald-400/40 shadow-lg";
   } else if (isCompare) {
@@ -44,14 +47,23 @@ export const PersonNode = memo(({ data }: NodeProps) => {
       className={`relative w-[220px] rounded-xl bg-white dark:bg-slate-900 border-2 p-3 shadow-sm transition-all cursor-pointer ${ringClass}`}
     >
       {/* Handles */}
-      <Handle type="target" position={Position.Top} className="!w-2 !h-2 !bg-slate-400 !border-white" />
-      <Handle type="source" position={Position.Bottom} className="!w-2 !h-2 !bg-slate-400 !border-white" />
-      <Handle type="target" position={Position.Left} id="spouse-left" className="!w-2 !h-2 !bg-rose-400 !border-white" />
-      <Handle type="source" position={Position.Right} id="spouse-right" className="!w-2 !h-2 !bg-rose-400 !border-white" />
+      <Handle type="target" position={Position.Top} id="top" className="!w-2 !h-2 !bg-slate-400 !border-white" />
+      <Handle type="source" position={Position.Bottom} id="bottom" className="!w-2 !h-2 !bg-slate-400 !border-white" />
+      
+      {/* Lateral handles for horizontal marriage connections */}
+      <Handle type="target" position={Position.Left} id="left-target" className="!w-2 !h-2 !bg-rose-400 !border-white" />
+      <Handle type="source" position={Position.Left} id="left-source" className="!w-2 !h-2 !bg-rose-400 !border-white" />
+      <Handle type="target" position={Position.Right} id="right-target" className="!w-2 !h-2 !bg-rose-400 !border-white" />
+      <Handle type="source" position={Position.Right} id="right-source" className="!w-2 !h-2 !bg-rose-400 !border-white" />
 
       {/* Badges on top */}
       <div className="flex items-center justify-between mb-1.5">
         <div className="flex items-center gap-1">
+          {isRoot && (
+            <span className="px-1.5 py-0.5 text-[10px] font-semibold bg-amber-500 text-white rounded flex items-center gap-0.5 shadow-xs">
+              <Crown className="w-2.5 h-2.5" /> Gốc cây
+            </span>
+          )}
           {person.familyOrdinalName && (
             <span className="px-1.5 py-0.5 text-[10px] font-semibold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200 rounded">
               Thứ {person.familyOrdinalName}

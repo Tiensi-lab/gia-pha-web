@@ -20,6 +20,7 @@ import {
   PlusCircle,
   Shield,
   Sparkles,
+  Crown,
 } from "lucide-react";
 
 interface PersonProfileDrawerProps {
@@ -36,6 +37,8 @@ interface PersonProfileDrawerProps {
   onAddRelationship?: (person: Person) => void;
   onSetAsReference?: (personId: string) => void;
   isReferencePerson?: boolean;
+  onSetAsRoot?: (personId: string) => void;
+  isRootPerson?: boolean;
 }
 
 export const PersonProfileDrawer: React.FC<PersonProfileDrawerProps> = ({
@@ -52,6 +55,8 @@ export const PersonProfileDrawer: React.FC<PersonProfileDrawerProps> = ({
   onAddRelationship,
   onSetAsReference,
   isReferencePerson = false,
+  onSetAsRoot,
+  isRootPerson = false,
 }) => {
   if (!isOpen || !person) return null;
 
@@ -124,22 +129,44 @@ export const PersonProfileDrawer: React.FC<PersonProfileDrawerProps> = ({
         </div>
 
         {/* Primary Action Buttons */}
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            onClick={() => onOpenKinship(person.id)}
-            className="flex items-center justify-center gap-1.5 px-3 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-semibold shadow-sm transition-all"
-          >
-            <ArrowRightLeft className="w-3.5 h-3.5" />
-            <span>Cách xưng hô</span>
-          </button>
-
-          {onSetAsReference && !isReferencePerson && (
+        <div className="flex flex-col gap-2">
+          <div className="grid grid-cols-2 gap-2">
             <button
-              onClick={() => onSetAsReference(person.id)}
-              className="flex items-center justify-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-lg font-medium transition-all"
+              onClick={() => onOpenKinship(person.id)}
+              className="flex items-center justify-center gap-1.5 px-3 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-semibold shadow-sm transition-all text-xs"
             >
-              <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-              <span>Đặt làm Tôi</span>
+              <ArrowRightLeft className="w-3.5 h-3.5" />
+              <span>Cách xưng hô</span>
+            </button>
+
+            {onSetAsReference && (
+              <button
+                onClick={() => onSetAsReference(person.id)}
+                disabled={isReferencePerson}
+                className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg font-medium transition-all text-xs ${
+                  isReferencePerson
+                    ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200 cursor-default"
+                    : "bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200"
+                }`}
+              >
+                <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                <span>{isReferencePerson ? "Đang là Tôi" : "Đặt làm Tôi"}</span>
+              </button>
+            )}
+          </div>
+
+          {onSetAsRoot && (
+            <button
+              onClick={() => onSetAsRoot(person.id)}
+              disabled={isRootPerson}
+              className={`w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg font-semibold transition-all text-xs border ${
+                isRootPerson
+                  ? "bg-amber-100 border-amber-300 text-amber-900 dark:bg-amber-950/60 dark:border-amber-700 dark:text-amber-200 cursor-default shadow-xs"
+                  : "bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/30 dark:hover:bg-amber-900/50 border-amber-200 dark:border-amber-800 text-amber-850 dark:text-amber-300"
+              }`}
+            >
+              <Crown className="w-3.5 h-3.5 text-amber-600" />
+              <span>{isRootPerson ? "👑 Đây là Gốc phả hệ (Đời 1)" : "Đặt người này làm Gốc cây (Đời 1)"}</span>
             </button>
           )}
         </div>

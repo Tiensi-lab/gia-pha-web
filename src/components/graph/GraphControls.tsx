@@ -13,6 +13,7 @@ import {
   ArrowRightLeft,
   Sparkles,
   GitBranch,
+  Crown,
 } from "lucide-react";
 
 export type ViewMode = "full" | "ancestors" | "descendants" | "immediate" | "path";
@@ -28,6 +29,8 @@ interface GraphControlsProps {
   onSelectPerson: (personId: string) => void;
   referencePersonId: string | null;
   onSelectReferencePerson: (personId: string) => void;
+  rootPersonId?: string | null;
+  onSelectRootPerson?: (personId: string) => void;
   onZoomIn: () => void;
   onZoomOut: () => void;
   onFitView: () => void;
@@ -45,6 +48,8 @@ export const GraphControls: React.FC<GraphControlsProps> = ({
   onSelectPerson,
   referencePersonId,
   onSelectReferencePerson,
+  rootPersonId,
+  onSelectRootPerson,
   onZoomIn,
   onZoomOut,
   onFitView,
@@ -170,8 +175,27 @@ export const GraphControls: React.FC<GraphControlsProps> = ({
         )}
       </div>
 
-      {/* Right side: Reference person & Kinship compare button & Canvas zoom */}
+      {/* Right side: Root person & Reference person & Kinship compare button & Canvas zoom */}
       <div className="flex items-center gap-2">
+        {/* Root person selector ("Gốc phả hệ / Thủy tổ") */}
+        {onSelectRootPerson && (
+          <div className="flex items-center gap-1.5 bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 px-3 py-1.5 rounded-lg border border-amber-300 dark:border-amber-700 text-xs font-medium">
+            <Crown className="w-3.5 h-3.5 text-amber-600" />
+            <span>Gốc cây:</span>
+            <select
+              value={rootPersonId || ""}
+              onChange={e => onSelectRootPerson(e.target.value)}
+              className="bg-transparent border-none text-xs font-semibold focus:outline-none cursor-pointer max-w-[130px] truncate"
+            >
+              {persons.map(p => (
+                <option key={p.id} value={p.id}>
+                  {p.fullName}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
         {/* Reference person selector ("Tôi là ai") */}
         <div className="flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200 px-3 py-1.5 rounded-lg border border-emerald-200 dark:border-emerald-800 text-xs font-medium">
           <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
