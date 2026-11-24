@@ -1,0 +1,25 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.admin == true ||
+        request.auth.uid in ["Ka3cQXiKiUN34bDVjyjvXD52nwv2", "ADMIN_PRIMARY_UID", "admin"]
+      );
+    }
+
+    match /familySpaces/{spaceId}/avatars/{allPaths=**} {
+      allow read: if true; // Publicly visible profile avatars
+      allow write: if isAdmin() && request.resource.size < 5 * 1024 * 1024
+                                && request.resource.contentType.matches('image/.*');
+    }
+
+    match /familySpaces/{spaceId}/documents/{allPaths=**} {
+      allow read, write: if isAdmin();
+    }
+  }
+}

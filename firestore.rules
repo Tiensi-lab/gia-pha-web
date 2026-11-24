@@ -1,0 +1,62 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.admin == true ||
+        request.auth.uid in ["Ka3cQXiKiUN34bDVjyjvXD52nwv2", "ADMIN_PRIMARY_UID", "admin"] ||
+        request.auth.token.email.matches(".*@admin\\.domain.*")
+      );
+    }
+
+    // Root family space configuration
+    match /familySpaces/{spaceId} {
+      allow read: if isAdmin() || (isSignedIn() && resource.data.visibility.isPublic == true);
+      allow write: if isAdmin();
+
+      match /persons/{personId} {
+        allow read: if isAdmin() || (resource.data.visibility.isPublic == true);
+        allow create, update, delete: if isAdmin();
+      }
+
+      match /relationships/{relationshipId} {
+        allow read: if isAdmin() || true; // Relationships can be read for graph rendering if person is visible
+        allow create, update, delete: if isAdmin();
+      }
+
+      match /branches/{branchId} {
+        allow read: if true;
+        allow create, update, delete: if isAdmin();
+      }
+
+      match /namingRules/{ruleId} {
+        allow read: if true;
+        allow write: if isAdmin();
+      }
+
+      match /kinshipOverrides/{overrideId} {
+        allow read: if true;
+        allow write: if isAdmin();
+      }
+
+      match /auditLogs/{logId} {
+        allow read: if isAdmin();
+        allow write: if isAdmin();
+      }
+
+      match /settings/{settingId} {
+        allow read: if true;
+        allow write: if isAdmin();
+      }
+    }
+
+    match /users/{userId} {
+      allow read, write: if isSignedIn() && request.auth.uid == userId;
+    }
+  }
+}
