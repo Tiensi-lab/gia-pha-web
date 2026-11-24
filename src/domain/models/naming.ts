@@ -19,7 +19,7 @@ export interface NamingPreferences {
 
 export const defaultSouthernNamingPreferences: NamingPreferences = {
   fatherTerm: "Ba",
-  motherTerm: "Má",
+  motherTerm: "Mẹ",
   paternalMaleElderTerm: "Bác",
   paternalMaleYoungerTerm: "Chú",
   paternalFemaleTerm: "Cô",
