@@ -74,9 +74,25 @@ export const PersonProfileDrawer: React.FC<PersonProfileDrawerProps> = ({
   const personBranches = branches.filter(b => person.branchIds.includes(b.id));
 
   return (
-    <div className="fixed inset-y-0 right-0 w-full max-w-md bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 shadow-2xl z-40 flex flex-col transform transition-transform duration-300 ease-in-out">
-      {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+    <>
+      {/* Mobile Backdrop */}
+      <div
+        onClick={onClose}
+        className="fixed inset-0 bg-black/40 backdrop-blur-xs z-40 md:hidden animate-in fade-in duration-200"
+      />
+
+      {/* Drawer Container (Desktop Sidebar & Mobile Bottom Sheet) */}
+      <div className="fixed z-50 flex flex-col bg-white dark:bg-slate-900 shadow-2xl transition-all duration-300 ease-in-out
+        md:inset-y-0 md:right-0 md:w-full md:max-w-md md:border-l md:border-slate-200 md:dark:border-slate-800
+        max-md:inset-x-0 max-md:bottom-0 max-md:max-h-[85vh] max-md:rounded-t-3xl max-md:border-t max-md:border-slate-200 max-md:dark:border-slate-800 animate-in max-md:slide-in-from-bottom duration-300"
+      >
+        {/* Mobile Drag Indicator */}
+        <div className="md:hidden pt-3 pb-1 flex justify-center shrink-0">
+          <div className="w-12 h-1.5 bg-slate-300 dark:bg-slate-600 rounded-full" />
+        </div>
+
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
         <div className="flex items-center gap-2">
           <div
             className={`w-9 h-9 rounded-full flex items-center justify-center ${
@@ -106,7 +122,7 @@ export const PersonProfileDrawer: React.FC<PersonProfileDrawerProps> = ({
       </div>
 
       {/* Body / Scrollable Content */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-5 text-xs">
+      <div className="flex-1 overflow-y-auto p-4 pb-10 space-y-5 text-xs">
         {/* Quick status & ordinal */}
         <div className="flex flex-wrap items-center gap-2">
           {person.familyOrdinalName && (
@@ -446,5 +462,6 @@ export const PersonProfileDrawer: React.FC<PersonProfileDrawerProps> = ({
         )}
       </div>
     </div>
+    </>
   );
 };
