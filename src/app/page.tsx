@@ -75,14 +75,29 @@ function FamilyAppContent() {
   const loadData = useCallback(async () => {
     try {
       setIsLoading(true);
-      const [pList, rList, bList, nPrefs, oList, aLogs, dList] = await Promise.all([
-        repository.getAllPersons(),
-        repository.getAllRelationships(),
-        repository.getAllBranches(),
-        repository.getNamingPreferences(),
-        repository.getAllOverrides(),
-        repository.getAuditLogs(100),
-        repository.detectDuplicates(),
+
+      // 1. Tải dữ liệu công khai phả hệ (khách xem và admin đều cần)
+      const [pList, rList, bList, nPrefs, oList] = await Promise.all([
+        repository.getAllPersons().catch((err) => {
+          console.warn("Lỗi tải danh sách thành viên:", err);
+          return [] as Person[];
+        }),
+        repository.getAllRelationships().catch((err) => {
+          console.warn("Lỗi tải quan hệ phả hệ:", err);
+          return [] as Relationship[];
+        }),
+        repository.getAllBranches().catch((err) => {
+          console.warn("Lỗi tải các nhánh phả hệ:", err);
+          return [] as Branch[];
+        }),
+        repository.getNamingPreferences().catch((err) => {
+          console.warn("Lỗi tải cấu hình xưng hô:", err);
+          return defaultSouthernNamingPreferences;
+        }),
+        repository.getAllOverrides().catch((err) => {
+          console.warn("Lỗi tải ghi đè xưng hô:", err);
+          return [] as KinshipOverride[];
+        }),
       ]);
 
       setPersons(pList);
@@ -90,17 +105,34 @@ function FamilyAppContent() {
       setBranches(bList);
       setPreferences(nPrefs);
       setOverrides(oList);
-      setAuditLogs(aLogs);
-      setDuplicates(dList);
 
-      if (pList.length > 0 && !referencePersonId) {
+      // 2. Tải dữ liệu quản trị: CHỈ tải khi đã đăng nhập Admin
+      if (isAdmin) {
+        const [aLogs, dList] = await Promise.all([
+          repository.getAuditLogs(100).catch((err) => {
+            console.warn("Lỗi tải nhật ký thao tác (Audit Logs):", err);
+            return [] as AuditLog[];
+          }),
+          repository.detectDuplicates().catch((err) => {
+            console.warn("Lỗi quét trùng lặp thành viên:", err);
+            return [] as DuplicateCandidate[];
+          }),
+        ]);
+        setAuditLogs(aLogs);
+        setDuplicates(dList);
+      } else {
+        setAuditLogs([]);
+        setDuplicates([]);
+      }
+
+      if (pList.length > 0 && (!referencePersonId || !pList.some(p => p.id === referencePersonId))) {
         const adminPerson = pList.find(p => p.id === "p-admin-minh") || pList[0];
         setReferencePersonId(adminPerson.id);
       }
 
       // Detect / Load rootPersonId
       let detectedRoot = rootPersonId;
-      if (!detectedRoot) {
+      if (!detectedRoot || !pList.some(p => p.id === detectedRoot)) {
         const storedRoot = typeof window !== "undefined" ? localStorage.getItem("gia_pha_root_person") : null;
         if (storedRoot && pList.some(p => p.id === storedRoot)) {
           detectedRoot = storedRoot;
@@ -130,7 +162,7 @@ function FamilyAppContent() {
     } finally {
       setIsLoading(false);
     }
-  }, [repository, referencePersonId, rootPersonId, selectedBranchId]);
+  }, [repository, referencePersonId, rootPersonId, selectedBranchId, isAdmin]);
 
   useEffect(() => {
     loadData();

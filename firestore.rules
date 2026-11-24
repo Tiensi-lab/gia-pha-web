@@ -16,16 +16,16 @@ service cloud.firestore {
 
     // Root family space configuration
     match /familySpaces/{spaceId} {
-      allow read: if isAdmin() || (isSignedIn() && resource.data.visibility.isPublic == true);
+      allow read: if true;
       allow write: if isAdmin();
 
       match /persons/{personId} {
-        allow read: if isAdmin() || (resource.data.visibility.isPublic == true);
+        allow read: if true;
         allow create, update, delete: if isAdmin();
       }
 
       match /relationships/{relationshipId} {
-        allow read: if isAdmin() || true; // Relationships can be read for graph rendering if person is visible
+        allow read: if true;
         allow create, update, delete: if isAdmin();
       }
 
