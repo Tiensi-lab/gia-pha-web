@@ -9,6 +9,7 @@ import { AuditLog } from "../domain/models/audit";
 import { DuplicateCandidate } from "../lib/storage/repository";
 import { getRepository } from "../lib/storage";
 import { FamilyGraph } from "../domain/graph/familyGraph";
+import { KinshipInference } from "../domain/kinship/kinshipInference";
 import { FamilyGraphCanvas } from "../components/graph/FamilyGraphCanvas";
 import { GraphControls, ViewMode } from "../components/graph/GraphControls";
 import { PersonProfileDrawer } from "../components/profile/PersonProfileDrawer";
@@ -44,6 +45,7 @@ function FamilyAppContent() {
   const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
   const [referencePersonId, setReferencePersonId] = useState<string | null>("p-admin-minh");
   const [rootPersonId, setRootPersonId] = useState<string | null>(null);
+  const [kinshipSpeakerId, setKinshipSpeakerId] = useState<string | null>(null);
   const [kinshipPathNodeIds, setKinshipPathNodeIds] = useState<Set<string>>(new Set());
 
   // Modals & Drawers
@@ -139,6 +141,37 @@ function FamilyAppContent() {
     return new FamilyGraph(persons, relationships);
   }, [persons, relationships]);
 
+  // Pre-calculate what kinshipSpeakerId calls all other members in the family
+  const kinshipLabelsMap = useMemo(() => {
+    if (!kinshipSpeakerId) return new Map<string, string>();
+    const map = new Map<string, string>();
+    for (const p of persons) {
+      if (p.id === kinshipSpeakerId) {
+        map.set(p.id, "Tôi (Người xưng hô)");
+        continue;
+      }
+      try {
+        const res = KinshipInference.inferKinship(
+          kinshipSpeakerId,
+          p.id,
+          familyGraph,
+          preferences,
+          overrides
+        );
+        if (res.aCallsB) {
+          map.set(p.id, res.aCallsB);
+        } else if (res.relationshipType && res.relationshipType !== "UNRESOLVED") {
+          map.set(p.id, res.relationshipType);
+        } else {
+          map.set(p.id, "Chưa rõ");
+        }
+      } catch {
+        map.set(p.id, "Họ hàng");
+      }
+    }
+    return map;
+  }, [kinshipSpeakerId, persons, familyGraph, preferences, overrides]);
+
   const selectedPerson = useMemo(() => {
     return persons.find(p => p.id === selectedPersonId) || null;
   }, [persons, selectedPersonId]);
@@ -150,8 +183,10 @@ function FamilyAppContent() {
   }, []);
 
   const handleOpenKinship = useCallback((targetPersonId: string) => {
-    setKinshipPersonBId(targetPersonId);
-    setIsKinshipModalOpen(true);
+    // Highlight this person as the addressing focal point and show callout labels on all other people!
+    setKinshipSpeakerId(targetPersonId);
+    setSelectedPersonId(targetPersonId);
+    setIsProfileOpen(false); // Close drawer to display the full interactive graph clearly
   }, []);
 
   const handleOpenOverride = useCallback((speakerId: string, targetId: string) => {
@@ -350,11 +385,16 @@ function FamilyAppContent() {
             onZoomIn={handleZoomIn}
             onZoomOut={handleZoomOut}
             onFitView={handleFitView}
+            isKinshipActive={!!kinshipSpeakerId}
             onOpenKinshipModal={() => {
-              if (selectedPersonId && selectedPersonId !== referencePersonId) {
-                setKinshipPersonBId(selectedPersonId);
+              const activePersonId = selectedPersonId || referencePersonId || (persons[0]?.id ?? null);
+              if (activePersonId) {
+                if (kinshipSpeakerId === activePersonId) {
+                  setKinshipSpeakerId(null);
+                } else {
+                  setKinshipSpeakerId(activePersonId);
+                }
               }
-              setIsKinshipModalOpen(true);
             }}
           />
 
@@ -370,6 +410,9 @@ function FamilyAppContent() {
               onSelectPerson={handleSelectPerson}
               referencePersonId={referencePersonId}
               rootPersonId={rootPersonId}
+              kinshipSpeakerId={kinshipSpeakerId}
+              kinshipLabelsMap={kinshipLabelsMap}
+              onExitKinshipMode={() => setKinshipSpeakerId(null)}
               kinshipPathNodeIds={kinshipPathNodeIds}
               onInitReactFlow={setRfInstance}
             />

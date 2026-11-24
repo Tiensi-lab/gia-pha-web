@@ -12,6 +12,8 @@ export interface PersonNodeData {
   isRef?: boolean;
   isRoot?: boolean;
   isCompare?: boolean;
+  isKinshipSpeaker?: boolean;
+  kinshipLabel?: string;
   isInKinshipPath?: boolean;
   isAncestor?: boolean;
   isDescendant?: boolean;
@@ -19,14 +21,27 @@ export interface PersonNodeData {
 
 export const PersonNode = memo(({ data }: NodeProps) => {
   const nodeData = data as unknown as PersonNodeData;
-  const { person, isSelected, isRef, isRoot, isCompare, isInKinshipPath, isAncestor, isDescendant } = nodeData;
+  const {
+    person,
+    isSelected,
+    isRef,
+    isRoot,
+    isCompare,
+    isKinshipSpeaker,
+    kinshipLabel,
+    isInKinshipPath,
+    isAncestor,
+    isDescendant,
+  } = nodeData;
 
   const isMale = person.gender === "male";
   const isFemale = person.gender === "female";
   const isDeceased = person.livingStatus === "deceased";
 
   let ringClass = "border-slate-300 dark:border-slate-700 hover:border-amber-400";
-  if (isSelected) {
+  if (isKinshipSpeaker) {
+    ringClass = "border-indigo-600 ring-4 ring-indigo-500/60 shadow-2xl scale-105 bg-indigo-50/20";
+  } else if (isSelected) {
     ringClass = "border-amber-500 ring-4 ring-amber-400/40 shadow-lg scale-105";
   } else if (isRoot) {
     ringClass = "border-amber-500 ring-2 ring-amber-400/60 shadow-md bg-amber-50/10";
@@ -59,6 +74,11 @@ export const PersonNode = memo(({ data }: NodeProps) => {
       {/* Badges on top */}
       <div className="flex items-center justify-between mb-1.5">
         <div className="flex items-center gap-1">
+          {isKinshipSpeaker && (
+            <span className="px-1.5 py-0.5 text-[10px] font-bold bg-indigo-600 text-white rounded flex items-center gap-0.5 shadow-sm animate-pulse">
+              <Sparkles className="w-2.5 h-2.5" /> Điểm nhìn xưng hô
+            </span>
+          )}
           {isRoot && (
             <span className="px-1.5 py-0.5 text-[10px] font-semibold bg-amber-500 text-white rounded flex items-center gap-0.5 shadow-xs">
               <Crown className="w-2.5 h-2.5" /> Gốc cây
@@ -118,6 +138,18 @@ export const PersonNode = memo(({ data }: NodeProps) => {
           </p>
         </div>
       </div>
+
+      {/* Kinship Callout Label when a person is selected for addressing */}
+      {kinshipLabel && !isKinshipSpeaker && (
+        <div className="mt-2.5 py-1 px-2.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/80 border border-indigo-200 dark:border-indigo-800 flex items-center justify-between shadow-xs animate-in fade-in zoom-in-95 duration-200">
+          <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-medium">
+            Gọi là:
+          </span>
+          <span className="text-xs font-black text-indigo-800 dark:text-indigo-200">
+            {kinshipLabel}
+          </span>
+        </div>
+      )}
     </div>
   );
 });

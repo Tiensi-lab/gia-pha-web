@@ -35,6 +35,7 @@ interface GraphControlsProps {
   onZoomOut: () => void;
   onFitView: () => void;
   onOpenKinshipModal: () => void;
+  isKinshipActive?: boolean;
 }
 
 export const GraphControls: React.FC<GraphControlsProps> = ({
@@ -54,6 +55,7 @@ export const GraphControls: React.FC<GraphControlsProps> = ({
   onZoomOut,
   onFitView,
   onOpenKinshipModal,
+  isKinshipActive = false,
 }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -216,10 +218,15 @@ export const GraphControls: React.FC<GraphControlsProps> = ({
         {/* Kinship button */}
         <button
           onClick={onOpenKinshipModal}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-semibold shadow-sm transition-all"
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold shadow-sm transition-all ${
+            isKinshipActive
+              ? "bg-indigo-600 text-white ring-2 ring-indigo-400 animate-pulse"
+              : "bg-amber-600 hover:bg-amber-700 text-white"
+          }`}
+          title={isKinshipActive ? "Đang bật chế độ xem xưng hô (Bấm để tắt)" : "Xem cách người này xưng hô với cả nhà"}
         >
           <ArrowRightLeft className="w-3.5 h-3.5" />
-          <span>Cách xưng hô</span>
+          <span>{isKinshipActive ? "Đang xem xưng hô" : "Cách xưng hô"}</span>
         </button>
 
         {/* Zoom controls */}

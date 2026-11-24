@@ -14,6 +14,8 @@ export interface GraphLayoutOptions {
   direction?: "DOWN" | "UP" | "RIGHT";
   rootPersonId?: string;
   highlightedPersonId?: string;
+  kinshipSpeakerId?: string;
+  kinshipLabelsMap?: Map<string, string>;
   kinshipPathNodeIds?: Set<string>;
   ancestorNodeIds?: Set<string>;
   descendantNodeIds?: Set<string>;
@@ -255,6 +257,8 @@ export class ElkGenealogyLayout {
       const isSelected = options.highlightedPersonId === person.id;
       const isRef = options.activeReferencePersonId === person.id;
       const isRoot = options.rootPersonId === person.id;
+      const isKinshipSpeaker = options.kinshipSpeakerId === person.id;
+      const kinshipLabel = options.kinshipLabelsMap?.get(person.id);
       const isCompare = options.selectedComparePersonId === person.id;
       const isInKinshipPath = !!options.kinshipPathNodeIds?.has(person.id);
       const isAncestor = !!options.ancestorNodeIds?.has(person.id);
@@ -269,6 +273,8 @@ export class ElkGenealogyLayout {
           isSelected,
           isRef,
           isRoot,
+          isKinshipSpeaker,
+          kinshipLabel,
           isCompare,
           isInKinshipPath,
           isAncestor,
